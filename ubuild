@@ -1,0 +1,300 @@
+#!/bin/bash
+
+ARCH=arm
+CROSS_COMPILE=aarch64-linux-gnu-
+ATF_TAG=v2.6
+ATF_PLAT=
+UBOOT_GIT=https://github.com/u-boot/u-boot.git
+UBOOT_TAG=v2022.04
+UBOOT_DEFCONFIG=
+UBOOT_COMMIT=
+UBOOT_MKIMAGE=
+PKG_REVISION=1
+
+get_soc_family() {
+    case "$1" in
+        rk*)
+            echo rockchip
+            ;;
+        s905y2|a311d)
+            echo amlogic
+            ;;
+        *)
+            error $EXIT_UNSUPPORTED_OPTION "$1"
+            ;;
+    esac
+}
+
+EXIT_SUCCESS=0
+EXIT_UNKNOWN_OPTION=1
+EXIT_TOO_FEW_ARGUMENTS=2
+EXIT_UNSUPPORTED_OPTION=3
+
+error() {
+    case "$1" in
+        $EXIT_SUCCESS)
+            ;;
+        $EXIT_UNKNOWN_OPTION)
+            echo "Unknown option: '$2'." >&2
+            ;;
+        $EXIT_TOO_FEW_ARGUMENTS)
+            echo "Too few arguments." >&2
+            ;;
+        $EXIT_UNSUPPORTED_OPTION)
+            echo "Option '$2' is not supported." >&2
+            ;;
+        *)
+            echo "Unknown exit code." >&2
+            ;;
+    esac
+    
+    exit "$1"
+}
+
+usage() {
+    cat >&2 << EOF
+Radxa U-Boot Build Tool
+usage: $(basename "$0") [options] <board>
+
+Supported image generation options:
+    -r, --revision [num]
+                        Specify custom revision number, default=1
+
+Alternative functionalities
+    --json [catagory]   Print supported options in json format
+                        Available catagories: $(get_supported_infos)
+    -h, --help          Show this help message
+
+Supported board:
+$(printf_array "    %s\n" "$(get_supported_boards)")
+EOF
+    exit "$1"
+}
+
+printf_array() {
+    local FORMAT="$1"
+    shift
+    local ARRAY=("$@")
+
+    if [[ $FORMAT == "json" ]]
+    then
+        jq --compact-output --null-input '$ARGS.positional' --args -- "${ARRAY[@]}"
+    else
+        for i in ${ARRAY[@]}
+        do
+            printf "$FORMAT" "$i"
+        done
+    fi
+}
+
+get_supported_boards() {
+    local BOARDS=()
+    for f in $(ls $SCRIPT_DIR/boards)
+    do
+        BOARDS+="$f "
+    done
+    echo "${BOARDS[@]}"
+}
+
+get_supported_infos() {
+    local INFOS=("boards")
+    echo "${INFOS[@]}"
+}
+
+in_array() {
+    local ITEM="$1"
+    shift
+    local ARRAY=("$@")
+    if [[ " ${ARRAY[*]} " =~ " $ITEM " ]]
+    then
+        true
+    else
+        false
+    fi
+}
+
+json() {
+    local ARRAY=($(get_supported_infos))
+    if ! in_array "$1" "${ARRAY[@]}"
+    then
+        error $EXIT_UNKNOWN_OPTION "$1"
+    fi
+
+    printf_array "json" $(get_supported_$1)
+    exit 0
+}
+
+build() {
+    if (( $# == 0 ))
+    then
+        usage 0
+    fi
+
+    while (( $# > 0 ))
+    do
+        case "$1" in
+            -r | --revision)
+                PKG_REVISION="$2"
+                shift 2
+                ;;
+            --json)
+                json "$2"
+                ;;
+            -h | --help)
+                usage 0
+                ;;
+            -*)
+                error $EXIT_UNKNOWN_OPTION "$1"
+                ;;
+            *) break ;;
+        esac
+    done
+
+    if (( $# == 0))
+    then
+        usage 0
+    fi
+
+    if ! source "$SCRIPT_DIR/boards/$1/board.conf" 2>/dev/null
+    then
+        error $EXIT_UNKNOWN_OPTION "$1"
+    fi
+
+    local BOARD=$1
+    local SOC_FAMILY=$(get_soc_family $SOC)
+
+    if [[ -z $UBOOT_DEFCONFIG ]]
+    then
+        case "$SOC_FAMILY" in
+            rockchip)
+                UBOOT_DEFCONFIG=${BOARD}-${SOC}_defconfig
+                ;;
+            *)
+                UBOOT_DEFCONFIG=${BOARD}_defconfig
+                ;;
+        esac
+    fi
+
+    mkdir -p "$SCRIPT_DIR/.src"
+
+    if ! [[ -e "$SCRIPT_DIR/.src/fip" ]]
+    then
+        git clone --depth 1 https://github.com/radxa/fip.git "$SCRIPT_DIR/.src/fip"
+    fi
+
+    if ! [[ -e "$SCRIPT_DIR/.src/atf" ]]
+    then
+        git clone --depth 1 --branch $ATF_TAG https://github.com/ARM-software/arm-trusted-firmware.git "$SCRIPT_DIR/.src/atf"
+    fi
+
+    if ! [[ -e "$SCRIPT_DIR/.src/u-boot" ]]
+    then
+        mkdir -p "$SCRIPT_DIR/.src/u-boot"
+        pushd "$SCRIPT_DIR/.src/u-boot"
+            git init
+        popd
+    fi
+
+    pushd "$SCRIPT_DIR/.src/u-boot"
+
+        git remote rm origin && true
+        git remote add origin $UBOOT_GIT
+
+        if [[ -n $UBOOT_COMMIT ]]
+        then
+            git fetch --depth 1 origin $UBOOT_COMMIT
+            git checkout $UBOOT_COMMIT
+        elif [[ -n $UBOOT_TAG ]]
+        then
+            git fetch --depth 1 origin tag $UBOOT_TAG
+            git checkout tags/$UBOOT_TAG
+        fi
+
+        # Get U-Boot version
+        source <(cat Makefile | head -n 10 | tr -d ' ')
+        local UBOOT_VERSION=$VERSION
+        if [[ -n $PATCHLEVEL ]]; then UBOOT_VERSION=$UBOOT_VERSION.$PATCHLEVEL; fi
+        if [[ -n $SUBLEVEL ]]; then UBOOT_VERSION=$UBOOT_VERSION.$SUBLEVEL; fi
+        if [[ -n $EXTRAVERSION ]]; then UBOOT_VERSION=$UBOOT_VERSION.$EXTRAVERSION; fi
+
+        if ls $SCRIPT_DIR/boards/$BOARD/*.patch &>/dev/null
+        then
+            git reset FETCH_HEAD
+            git restore .
+            git config --get user.name || git config user.name "ubuild"
+            git config --get user.email || git config user.email "ubuild@invalid.email"
+            git am --reject --whitespace=fix $(ls $SCRIPT_DIR/boards/$BOARD/*.patch)
+        fi
+
+    popd
+
+    case "$SOC_FAMILY" in
+        rockchip)
+            case "$SOC" in
+                px30|rk3288|rk3328|rk3368|rk3399)
+                    make -C "$SCRIPT_DIR/.src/atf" -j$(nproc) CROSS_COMPILE=$CROSS_COMPILE PLAT=$SOC
+                    local UBOOT_OPT="BL31=$SCRIPT_DIR/.src/atf/build/$SOC/release/bl31/bl31.elf"
+                    ;;
+                *)
+                    local UBOOT_OPT=
+                    ;;
+            esac
+            UBOOT_OPT="$UBOOT_OPT u-boot.dtb u-boot.itb"
+            ;;
+        *)
+            local UBOOT_OPT=
+            ;;
+    esac
+
+    make -C "$SCRIPT_DIR/.src/u-boot" -j$(nproc) ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE $UBOOT_DEFCONFIG $UBOOT_OPT all
+
+    rm -rf "$SCRIPT_DIR/.root"
+    mkdir -p "$SCRIPT_DIR/.root/usr/lib/u-boot-$BOARD"
+    cp "$SCRIPT_DIR/common/boot.cmd" "$SCRIPT_DIR/boards/$BOARD/uEnv.txt" "$SCRIPT_DIR/.root/usr/lib/u-boot-$BOARD/"
+
+    case "$SOC_FAMILY" in
+        amlogic)
+            make -C "$SCRIPT_DIR/.src/fip" -j$(nproc) fip BOARD=$BOARD UBOOT_BIN="$SCRIPT_DIR/.src/u-boot/u-boot.bin"
+
+            cp "$SCRIPT_DIR/.src/fip/$BOARD/u-boot.bin" "$SCRIPT_DIR/.src/fip/$BOARD/u-boot.bin.sd.bin" "$SCRIPT_DIR/.root/usr/lib/u-boot-$BOARD/"
+            ;;
+        rockchip)
+            if [[ -z $UBOOT_MKIMAGE ]]
+            then
+                local UBOOT_MKIMAGE=$SOC
+            fi
+            $SCRIPT_DIR/.src/u-boot/tools/mkimage -n $UBOOT_MKIMAGE -T rkspi -d "$SCRIPT_DIR/.src/u-boot/tpl/u-boot-tpl.bin:$SCRIPT_DIR/.src/u-boot/spl/u-boot-spl.bin" "$SCRIPT_DIR/.src/u-boot/idbloader-tpl.img"
+
+            cp "$SCRIPT_DIR/.src/u-boot/u-boot.itb" "$SCRIPT_DIR/.src/u-boot/idbloader-tpl.img" "$SCRIPT_DIR/.root/usr/lib/u-boot-$BOARD/"
+            ;;
+        *)
+            error $EXIT_UNSUPPORTED_OPTION "$SOC_FAMILY"
+            ;;
+    esac
+
+    local NAME="u-boot-$BOARD"
+    local VERSION="$UBOOT_VERSION-$PKG_REVISION"
+    local URL="https://github.com/radxa-pkg/$NAME"
+    local DESCRIPTION="Radxa U-Boot image for $BOARD"
+    fpm -s dir -t deb -n "$NAME" -v "$VERSION" \
+        -a arm64 \
+        --deb-priority optional --category admin \
+        --deb-field "Replaces: $NAME" \
+        --deb-field "Conflicts: $NAME" \
+        --deb-field "Provides: $NAME" \
+        --url "$URL" \
+        --description "$DESCRIPTION" \
+        --license "GPL-2+" \
+        -m "Radxa <dev@radxa.com>" \
+        --vendor "Radxa" \
+        --force \
+        "$SCRIPT_DIR/.root/"=/
+
+    rm -rf "$SCRIPT_DIR/.root"
+}
+
+set -e
+
+SCRIPT_DIR="$(dirname "$(realpath "$0")")"
+
+build "$@"

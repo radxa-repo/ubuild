@@ -1,0 +1,1 @@
+overlays=rk3568-fiq-debugger-uart2m0

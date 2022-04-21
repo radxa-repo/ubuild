@@ -1,0 +1,39 @@
+From f4a16594eb15327708360b8f4b7dbb3581a73e55 Mon Sep 17 00:00:00 2001
+From: Yuntian Zhang <yt@radxa.com>
+Date: Tue, 19 Apr 2022 11:36:07 +0800
+Subject: [PATCH] VENDOR: boards: amlogic: support factory reset
+
+Add necessary configs to support factory reset with maskrom mode.
+
+Signed-off-by: Yuntian Zhang <yt@radxa.com>
+---
+ configs/radxa-zero_defconfig | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/configs/radxa-zero_defconfig b/configs/radxa-zero_defconfig
+index 6851101f..f5494609 100644
+--- a/configs/radxa-zero_defconfig
++++ b/configs/radxa-zero_defconfig
+@@ -5,6 +5,10 @@ CONFIG_NR_DRAM_BANKS=1
+ CONFIG_ENV_SIZE=0x2000
+ CONFIG_DM_GPIO=y
+ CONFIG_DEFAULT_DEVICE_TREE="meson-g12a-radxa-zero"
++# CONFIG_BOOTDELAY=0
++# CONFIG_BOOTCOMMAND="mmc dev 2 0; mmc erase 0 10000; mmc dev 2 1; mmc erase 0 2000; mmc dev 2 2; mmc erase 0 2000; mbr write mmc 2 'size=-,id=0x83'; ums 1 mmc 2; reset;"
++CONFIG_USE_PREBOOT=y
++CONFIG_PREBOOT="usb start"
+ CONFIG_MESON_G12A=y
+ CONFIG_DEBUG_UART_BASE=0xff803000
+ CONFIG_DEBUG_UART_CLOCK=24000000
+@@ -24,6 +28,8 @@ CONFIG_CMD_USB=y
+ CONFIG_CMD_USB_MASS_STORAGE=y
+ # CONFIG_CMD_SETEXPR is not set
+ CONFIG_CMD_REGULATOR=y
++CONFIG_CMD_MBR=y
++CONFIG_CMD_GPT=y
+ CONFIG_OF_CONTROL=y
+ CONFIG_SYS_RELOC_GD_ENV_ADDR=y
+ CONFIG_NET_RANDOM_ETHADDR=y
+-- 
+2.35.1
+
