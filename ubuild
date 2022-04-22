@@ -278,6 +278,7 @@ build() {
     local DESCRIPTION="Radxa U-Boot image for $BOARD"
     fpm -s dir -t deb -n "$NAME" -v "$VERSION" \
         -a arm64 \
+        --depends dthelper \
         --deb-priority optional --category admin \
         --deb-field "Replaces: $NAME" \
         --deb-field "Conflicts: $NAME" \
