@@ -3,6 +3,9 @@ description: Radxa U-Boot Build Tool
 inputs:
   board:
     required: true
+  revision:
+    retuired: false
+    default: 1
   release-id:
     required: false
   github-token:
@@ -24,7 +27,7 @@ runs:
       run: |
         mkdir .output
         pushd .output
-        ../ubuild ${{ inputs.board }}
+        ../ubuild -r ${{ inputs.revision }} ${{ inputs.board }}
         popd
     - name: Upload
       if: inputs.release-id != '' && inputs.github-token != ''
