@@ -22,7 +22,13 @@ if test -e ${devtype} ${devnum} ${prefix}uEnv.txt; then
 	env import -t ${load_addr} ${filesize}
 fi
 
-setenv bootargs "initrd=${initrdimg} root=UUID=${rootuuid} rootwait earlyprintk console=tty1 console=${console} panic=10 consoleblank=0 loglevel=${verbosity} cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=memory swapaccount=1 ${extraargs} ${extraboardargs}"
+if test -e ${devtype} ${devnum} ${prefix}.system.conf; then
+	echo "Loading .system.conf..."
+	load ${devtype} ${devnum} ${load_addr} ${prefix}.system.conf
+	env import -t ${load_addr} ${filesize}
+fi
+
+setenv bootargs "root=UUID=${rootuuid} rootwait earlyprintk console=tty1 console=${console} panic=10 loglevel=${verbosity} cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=memory swapaccount=1 ${extraargs} ${extraboardargs}"
 
 echo "Loading ${initrdimg}..."
 load ${devtype} ${devnum} ${ramdisk_addr_r} ${prefix}${initrdimg}
