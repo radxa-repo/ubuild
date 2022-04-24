@@ -22,9 +22,9 @@ if test -e ${devtype} ${devnum} ${prefix}uEnv.txt; then
 	env import -t ${load_addr} ${filesize}
 fi
 
-if test -e ${devtype} ${devnum} ${prefix}.system.conf; then
-	echo "Loading .system.conf..."
-	load ${devtype} ${devnum} ${load_addr} ${prefix}.system.conf
+if test -e ${devtype} ${devnum} ${prefix}.radxa; then
+	echo "Loading .radxa..."
+	load ${devtype} ${devnum} ${load_addr} ${prefix}.radxa
 	env import -t ${load_addr} ${filesize}
 fi
 
