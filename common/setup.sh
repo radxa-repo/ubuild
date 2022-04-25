@@ -17,11 +17,11 @@ update_bootloader() {
     case "$(dtsoc)" in
         amlogic*)
             dd if="$SCRIPT_DIR/u-boot.bin.sd.bin" of=$DEVICE bs=1 count=444
-            dd if="$SCRIPT_DIR/u-boot.bin.sd.bin" of=$DEVICE bs=512 skip=1
+            dd if="$SCRIPT_DIR/u-boot.bin.sd.bin" of=$DEVICE bs=512 skip=1 seek=1
             ;;
         rockchip*)
-            dd if="$SCRIPT_DIR/idbloader-tpl.img" of=$DEVICE bs=512 skip=64
-            dd if="$SCRIPT_DIR/u-boot.itb" of=$DEVICE bs=512 skip=16384
+            dd if="$SCRIPT_DIR/idbloader.img" of=$DEVICE bs=512 seek=64
+            dd if="$SCRIPT_DIR/u-boot.itb" of=$DEVICE bs=512 seek=16384
             ;;
         *)
             echo Unknown SOC. >&2

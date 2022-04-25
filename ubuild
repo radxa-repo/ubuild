@@ -1,15 +1,17 @@
 #!/bin/bash
 
-ARCH=arm
-CROSS_COMPILE=aarch64-linux-gnu-
-ATF_TAG=v2.6
-ATF_PLAT=
-UBOOT_GIT=https://github.com/u-boot/u-boot.git
-UBOOT_TAG=v2022.04
+ARCH="arm"
+CROSS_COMPILE="aarch64-linux-gnu-"
+MAINLINE_UBOOT="https://github.com/u-boot/u-boot.git"
+ATF_TAG="v2.6"
+RKBIN=
+UBOOT_GIT="$MAINLINE_UBOOT"
+UBOOT_TAG="v2022.04"
 UBOOT_DEFCONFIG=
 UBOOT_COMMIT=
-UBOOT_MKIMAGE=
-PKG_REVISION=1
+UBOOT_BRANCH=
+SOC_OVERRIDE=
+PKG_REVISION="1"
 
 get_soc_family() {
     case "$1" in
@@ -175,11 +177,21 @@ build() {
         esac
     fi
 
+    if [[ -z $SOC_OVERRIDE ]]
+    then
+        local SOC_OVERRIDE=$SOC
+    fi
+
     mkdir -p "$SCRIPT_DIR/.src"
 
     if ! [[ -e "$SCRIPT_DIR/.src/fip" ]]
     then
         git clone --depth 1 https://github.com/radxa/fip.git "$SCRIPT_DIR/.src/fip"
+    fi
+
+    if ! [[ -e "$SCRIPT_DIR/.src/rkbin" ]]
+    then
+        git clone --depth 1 https://github.com/radxa/rkbin.git "$SCRIPT_DIR/.src/rkbin"
     fi
 
     if ! [[ -e "$SCRIPT_DIR/.src/atf" ]]
@@ -197,16 +209,25 @@ build() {
 
     pushd "$SCRIPT_DIR/.src/u-boot"
 
-        git remote rm origin && true
-        git remote add origin $UBOOT_GIT
+        ORIGIN=$(sha1sum <(echo "$UBOOT_GIT") | cut -d' ' -f1)
+        git remote add $ORIGIN $UBOOT_GIT 2>/dev/null && true
 
         if [[ -n $UBOOT_COMMIT ]]
         then
-            git fetch --depth 1 origin $UBOOT_COMMIT
+            git fetch --depth 1 $ORIGIN $UBOOT_COMMIT
             git checkout $UBOOT_COMMIT
+        elif [[ -n $UBOOT_BRANCH ]]
+        then
+            # Tag is more precise than branch and should be preferred.
+            # However, since we are defaulting with upstream U-Boot,
+            # we will always have non empty $UBOOT_TAG.
+            # As such check $UBOOT_BRANCH first.
+            git fetch --depth 1 $ORIGIN $UBOOT_BRANCH
+            git checkout $UBOOT_BRANCH
+            git reset --hard $ORIGIN/$UBOOT_BRANCH
         elif [[ -n $UBOOT_TAG ]]
         then
-            git fetch --depth 1 origin tag $UBOOT_TAG
+            git fetch --depth 1 $ORIGIN tag $UBOOT_TAG
             git checkout tags/$UBOOT_TAG
         fi
 
@@ -230,15 +251,21 @@ build() {
 
     case "$SOC_FAMILY" in
         rockchip)
-            case "$SOC" in
-                px30|rk3288|rk3328|rk3368|rk3399)
-                    make -C "$SCRIPT_DIR/.src/atf" -j$(nproc) CROSS_COMPILE=$CROSS_COMPILE PLAT=$SOC
-                    local UBOOT_OPT="BL31=$SCRIPT_DIR/.src/atf/build/$SOC/release/bl31/bl31.elf"
-                    ;;
-                *)
+            if [[ $UBOOT_GIT == $MAINLINE_UBOOT ]]
+            then
+                make -C "$SCRIPT_DIR/.src/atf" -j$(nproc) CROSS_COMPILE=$CROSS_COMPILE PLAT=$SOC_OVERRIDE
+                local UBOOT_OPT="BL31=$SCRIPT_DIR/.src/atf/build/$SOC_OVERRIDE/release/bl31/bl31.elf"
+            else
+                local BL31=$(find $SCRIPT_DIR/.src/rkbin/bin | grep ${SOC_OVERRIDE}_bl31_v)
+                if [[ -z $BL31 ]]
+                then
+                    echo "Unable to find prebuilt bl31. The resulting bootloader may not work!" >&2
                     local UBOOT_OPT=
-                    ;;
-            esac
+                else
+                    local UBOOT_OPT="BL31=$BL31"
+                fi
+            fi
+
             UBOOT_OPT="$UBOOT_OPT u-boot.dtb u-boot.itb"
             ;;
         *)
@@ -259,13 +286,20 @@ build() {
             cp "$SCRIPT_DIR/.src/fip/$BOARD/u-boot.bin" "$SCRIPT_DIR/.src/fip/$BOARD/u-boot.bin.sd.bin" "$SCRIPT_DIR/.root/usr/lib/u-boot-$BOARD/"
             ;;
         rockchip)
-            if [[ -z $UBOOT_MKIMAGE ]]
-            then
-                local UBOOT_MKIMAGE=$SOC
-            fi
-            $SCRIPT_DIR/.src/u-boot/tools/mkimage -n $UBOOT_MKIMAGE -T rkspi -d "$SCRIPT_DIR/.src/u-boot/tpl/u-boot-tpl.bin:$SCRIPT_DIR/.src/u-boot/spl/u-boot-spl.bin" "$SCRIPT_DIR/.src/u-boot/idbloader-tpl.img"
+            $SCRIPT_DIR/.src/u-boot/tools/mkimage -n $SOC_OVERRIDE -T rkspi -d "$SCRIPT_DIR/.src/u-boot/tpl/u-boot-tpl.bin:$SCRIPT_DIR/.src/u-boot/spl/u-boot-spl.bin" "$SCRIPT_DIR/.src/u-boot/idbloader-tpl.img"
 
-            cp "$SCRIPT_DIR/.src/u-boot/u-boot.itb" "$SCRIPT_DIR/.src/u-boot/idbloader-tpl.img" "$SCRIPT_DIR/.root/usr/lib/u-boot-$BOARD/"
+            if [[ -n $RKBIN ]]
+            then
+                local FLASH_DATA=$(find $SCRIPT_DIR/.src/rkbin/bin | grep ${RKBIN})
+                if [[ -z $FLASH_DATA ]]
+                then
+                    echo "Unable to find rockchip memory data. You may not have a valid first stage loader." >&2
+                else
+                    $SCRIPT_DIR/.src/u-boot/tools/mkimage -n $SOC_OVERRIDE -T rksd -d "$FLASH_DATA:$SCRIPT_DIR/.src/u-boot/spl/u-boot-spl.bin" "$SCRIPT_DIR/.src/u-boot/idbloader.img"
+                fi
+            fi
+
+            cp "$SCRIPT_DIR/.src/u-boot/u-boot.itb" "$SCRIPT_DIR/.src/u-boot/idbloader-tpl.img" "$SCRIPT_DIR/.src/u-boot/idbloader.img" "$SCRIPT_DIR/.root/usr/lib/u-boot-$BOARD/"
             ;;
         *)
             error $EXIT_UNSUPPORTED_OPTION "$SOC_FAMILY"
