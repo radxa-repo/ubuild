@@ -242,8 +242,8 @@ build() {
         then
             git reset FETCH_HEAD
             git restore .
-            git config --get user.name || git config user.name "ubuild"
-            git config --get user.email || git config user.email "ubuild@invalid.email"
+            git config --get user.name >/dev/null || git config user.name "ubuild"
+            git config --get user.email >/dev/null || git config user.email "ubuild@invalid.email"
             git am --reject --whitespace=fix $(ls $SCRIPT_DIR/boards/$BOARD/*.patch)
         fi
 
