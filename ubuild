@@ -1,18 +1,5 @@
 #!/bin/bash
 
-ARCH="arm"
-CROSS_COMPILE="aarch64-linux-gnu-"
-MAINLINE_UBOOT="https://github.com/u-boot/u-boot.git"
-ATF_TAG="v2.6"
-RKBIN=
-UBOOT_GIT="$MAINLINE_UBOOT"
-UBOOT_TAG="v2022.04"
-UBOOT_DEFCONFIG=
-UBOOT_COMMIT=
-UBOOT_BRANCH=
-SOC_OVERRIDE=
-PKG_REVISION="1"
-
 get_soc_family() {
     case "$1" in
         rk*)
@@ -26,6 +13,21 @@ get_soc_family() {
             ;;
     esac
 }
+
+ARCH="arm"
+CROSS_COMPILE="aarch64-linux-gnu-"
+MAINLINE_UBOOT="https://github.com/u-boot/u-boot.git"
+ATF_TAG="v2.6"
+RKBIN=
+UBOOT_GIT="$MAINLINE_UBOOT"
+UBOOT_TAG="v2022.04"
+UBOOT_DEFCONFIG=
+UBOOT_COMMIT=
+UBOOT_BRANCH=
+SOC_OVERRIDE=
+PKG_REVISION="1"
+
+NO_PREPARE_SOURCE=
 
 EXIT_SUCCESS=0
 EXIT_UNKNOWN_OPTION=1
@@ -58,9 +60,10 @@ usage() {
 Radxa U-Boot Build Tool
 usage: $(basename "$0") [options] <board>
 
-Supported image generation options:
+Supported package generation options:
     -r, --revision [num]
                         Specify custom revision number, default=1
+    --no-prepare-source Allow building against locally modified repos
 
 Alternative functionalities
     --json [catagory]   Print supported options in json format
@@ -126,6 +129,74 @@ json() {
     exit 0
 }
 
+prepare_source() {
+    mkdir -p "$SCRIPT_DIR/.src"
+
+    if ! [[ -e "$SCRIPT_DIR/.src/fip" ]]
+    then
+        git clone --depth 1 https://github.com/radxa/fip.git "$SCRIPT_DIR/.src/fip"
+    fi
+
+    if ! [[ -e "$SCRIPT_DIR/.src/rkbin" ]]
+    then
+        git clone --depth 1 https://github.com/radxa/rkbin.git "$SCRIPT_DIR/.src/rkbin"
+    fi
+
+    if ! [[ -e "$SCRIPT_DIR/.src/atf" ]]
+    then
+        git clone --depth 1 --branch $ATF_TAG https://github.com/ARM-software/arm-trusted-firmware.git "$SCRIPT_DIR/.src/atf"
+    fi
+
+    if ! [[ -e "$SCRIPT_DIR/.src/u-boot" ]]
+    then
+        mkdir -p "$SCRIPT_DIR/.src/u-boot"
+        pushd "$SCRIPT_DIR/.src/u-boot"
+            git init
+        popd
+    fi
+
+    pushd "$SCRIPT_DIR/.src/u-boot"
+
+        local ORIGIN=$(sha1sum <(echo "$UBOOT_GIT") | cut -d' ' -f1)
+        git remote add $ORIGIN $UBOOT_GIT 2>/dev/null && true
+
+        if [[ -n $UBOOT_COMMIT ]]
+        then
+            git fetch --depth 1 $ORIGIN $UBOOT_COMMIT
+            git checkout $UBOOT_COMMIT
+        elif [[ -n $UBOOT_BRANCH ]]
+        then
+            # Tag is more precise than branch and should be preferred.
+            # However, since we are defaulting with upstream U-Boot,
+            # we will always have non empty $UBOOT_TAG.
+            # As such check $UBOOT_BRANCH first.
+            git fetch --depth 1 $ORIGIN $UBOOT_BRANCH
+            git checkout $UBOOT_BRANCH
+            git reset --hard $ORIGIN/$UBOOT_BRANCH
+        elif [[ -n $UBOOT_TAG ]]
+        then
+            git fetch --depth 1 $ORIGIN tag $UBOOT_TAG
+            git checkout tags/$UBOOT_TAG
+        fi
+
+        if ls $SCRIPT_DIR/boards/$BOARD/*.patch &>/dev/null
+        then
+            git reset FETCH_HEAD
+            git restore .
+            git config --get user.name >/dev/null || git config user.name "ubuild"
+            git config --get user.email >/dev/null || git config user.email "ubuild@invalid.email"
+            git am --reject --whitespace=fix $(ls $SCRIPT_DIR/boards/$BOARD/*.patch)
+        fi
+
+        # Get U-Boot version
+        source <(cat Makefile | head -n 10 | tr -d ' ')
+        UBOOT_VERSION=$VERSION
+        if [[ -n $PATCHLEVEL ]]; then UBOOT_VERSION=$UBOOT_VERSION.$PATCHLEVEL; fi
+        if [[ -n $SUBLEVEL ]]; then UBOOT_VERSION=$UBOOT_VERSION.$SUBLEVEL; fi
+        if [[ -n $EXTRAVERSION ]]; then UBOOT_VERSION=$UBOOT_VERSION.$EXTRAVERSION; fi
+    popd
+}
+
 build() {
     if (( $# == 0 ))
     then
@@ -138,6 +209,10 @@ build() {
             -r | --revision)
                 PKG_REVISION="$2"
                 shift 2
+                ;;
+            --no-prepare-source)
+                NO_PREPARE_SOURCE="y"
+                shift
                 ;;
             --json)
                 json "$2"
@@ -182,72 +257,7 @@ build() {
         local SOC_OVERRIDE=$SOC
     fi
 
-    mkdir -p "$SCRIPT_DIR/.src"
-
-    if ! [[ -e "$SCRIPT_DIR/.src/fip" ]]
-    then
-        git clone --depth 1 https://github.com/radxa/fip.git "$SCRIPT_DIR/.src/fip"
-    fi
-
-    if ! [[ -e "$SCRIPT_DIR/.src/rkbin" ]]
-    then
-        git clone --depth 1 https://github.com/radxa/rkbin.git "$SCRIPT_DIR/.src/rkbin"
-    fi
-
-    if ! [[ -e "$SCRIPT_DIR/.src/atf" ]]
-    then
-        git clone --depth 1 --branch $ATF_TAG https://github.com/ARM-software/arm-trusted-firmware.git "$SCRIPT_DIR/.src/atf"
-    fi
-
-    if ! [[ -e "$SCRIPT_DIR/.src/u-boot" ]]
-    then
-        mkdir -p "$SCRIPT_DIR/.src/u-boot"
-        pushd "$SCRIPT_DIR/.src/u-boot"
-            git init
-        popd
-    fi
-
-    pushd "$SCRIPT_DIR/.src/u-boot"
-
-        ORIGIN=$(sha1sum <(echo "$UBOOT_GIT") | cut -d' ' -f1)
-        git remote add $ORIGIN $UBOOT_GIT 2>/dev/null && true
-
-        if [[ -n $UBOOT_COMMIT ]]
-        then
-            git fetch --depth 1 $ORIGIN $UBOOT_COMMIT
-            git checkout $UBOOT_COMMIT
-        elif [[ -n $UBOOT_BRANCH ]]
-        then
-            # Tag is more precise than branch and should be preferred.
-            # However, since we are defaulting with upstream U-Boot,
-            # we will always have non empty $UBOOT_TAG.
-            # As such check $UBOOT_BRANCH first.
-            git fetch --depth 1 $ORIGIN $UBOOT_BRANCH
-            git checkout $UBOOT_BRANCH
-            git reset --hard $ORIGIN/$UBOOT_BRANCH
-        elif [[ -n $UBOOT_TAG ]]
-        then
-            git fetch --depth 1 $ORIGIN tag $UBOOT_TAG
-            git checkout tags/$UBOOT_TAG
-        fi
-
-        # Get U-Boot version
-        source <(cat Makefile | head -n 10 | tr -d ' ')
-        local UBOOT_VERSION=$VERSION
-        if [[ -n $PATCHLEVEL ]]; then UBOOT_VERSION=$UBOOT_VERSION.$PATCHLEVEL; fi
-        if [[ -n $SUBLEVEL ]]; then UBOOT_VERSION=$UBOOT_VERSION.$SUBLEVEL; fi
-        if [[ -n $EXTRAVERSION ]]; then UBOOT_VERSION=$UBOOT_VERSION.$EXTRAVERSION; fi
-
-        if ls $SCRIPT_DIR/boards/$BOARD/*.patch &>/dev/null
-        then
-            git reset FETCH_HEAD
-            git restore .
-            git config --get user.name >/dev/null || git config user.name "ubuild"
-            git config --get user.email >/dev/null || git config user.email "ubuild@invalid.email"
-            git am --reject --whitespace=fix $(ls $SCRIPT_DIR/boards/$BOARD/*.patch)
-        fi
-
-    popd
+    [[ $NO_PREPARE_SOURCE != "y" ]] && prepare_source
 
     case "$SOC_FAMILY" in
         rockchip)
