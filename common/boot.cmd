@@ -10,10 +10,10 @@ setenv verbosity "7"
 
 if test "${vendor}" = "amlogic"; then
 	setenv load_addr "0x1600000"
-	setenv console "ttyAML0,115200"
+	setenv console "ttyAML0,115200n8"
 elif test "${vendor}" = "rockchip"; then
 	setenv load_addr "0x59000000"
-	setenv console "ttyFIQ0"
+	setenv console "ttyFIQ0,1500000n8"
 fi
 
 if test -e ${devtype} ${devnum} ${prefix}uEnv.txt; then
