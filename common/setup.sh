@@ -30,6 +30,32 @@ update_bootloader() {
     esac
 }
 
+update_spi() {
+    if [[ ! -e /dev/mtdblock0 ]]
+    then
+        echo "/dev/mtdblock0 is missing." >&2
+        exit 1
+    fi
+
+    case "$(dtsoc)" in
+        rockchip*)
+            dd if=/dev/zero of=/dev/mtdblock0 || true
+            cp "$SCRIPT_DIR/idbloader-tpl.img" /tmp/spi.img
+            dd if="$SCRIPT_DIR/u-boot.itb" of=/tmp/spi.img bs=512 seek=768
+            #dd if=/dev/zero of=/tmp/spi.img bs=1 count=0 seek=4M
+            dd if=/tmp/spi.img of=/dev/mtdblock0
+            rm /tmp/spi.img
+            ;;
+        *)
+            echo Unknown SOC. >&2
+            exit 1
+            ;;
+    esac
+
+}
+
 SCRIPT_DIR="$(dirname "$(realpath "$0")")"
 
-$1
+ACTION="$1"
+shift
+$ACTION "$@"
