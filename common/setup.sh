@@ -1,9 +1,20 @@
 #!/bin/bash
 
 postinst() {
-    [[ ! -e /boot/uEnv.txt ]] && cp "$SCRIPT_DIR/uEnv.txt" /boot
-    [[ ! -e /boot/boot.cmd ]] && cp "$SCRIPT_DIR/boot.cmd" /boot
-    [[ ! -e /boot/boot.scr ]] && mkimage -C none -A arm -T script -d /boot/boot.cmd /boot/boot.scr
+    if [[ ! -e /boot/uEnv.txt ]]
+    then
+        cp "$SCRIPT_DIR/uEnv.txt" /boot
+    fi
+    
+    if [[ ! -e /boot/boot.cmd ]]
+    then
+        update_bootcmd
+    fi
+
+    if [[ ! -e /boot/boot.scr ]]
+    then
+        mkimage -C none -A arm -T script -d /boot/boot.cmd /boot/boot.scr
+    fi
 }
 
 update_bootcmd() {
