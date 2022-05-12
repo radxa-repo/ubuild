@@ -24,8 +24,9 @@ update_bootcmd() {
 
 update_bootloader() {
     local DEVICE=$1
+    local SOC=${2:-$(dtsoc)}
 
-    case "$(dtsoc)" in
+    case "$SOC" in
         amlogic*)
             dd if="$SCRIPT_DIR/u-boot.bin.sd.bin" of=$DEVICE bs=1 count=444
             dd if="$SCRIPT_DIR/u-boot.bin.sd.bin" of=$DEVICE bs=512 skip=1 seek=1
