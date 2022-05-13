@@ -129,33 +129,39 @@ json() {
     exit 0
 }
 
+git_source() {
+    local GIT_URL="$1"
+    local GIT_BRANCH="$2"
+    local FOLDER="$(basename $GIT_URL)"
+    FOLDER="${FOLDER%.*}"
+
+    if [[ -n $GIT_BRANCH ]]
+    then
+        GIT_BRANCH="--branch $GIT_BRANCH"
+    fi
+
+    if ! [[ -e "$SRC_DIR/$FOLDER" ]]
+    then
+        git clone --depth 1 $GIT_BRANCH "$GIT_URL" "$SRC_DIR/$FOLDER"
+    fi
+}
+
 prepare_source() {
-    mkdir -p "$SCRIPT_DIR/.src"
+    local SRC_DIR="$SCRIPT_DIR/.src"
+    local UBOOT_DIR="$SRC_DIR/u-boot"
+    local BOARD_DIR="$SCRIPT_DIR/boards/$BOARD"
 
-    if ! [[ -e "$SCRIPT_DIR/.src/fip" ]]
-    then
-        git clone --depth 1 https://github.com/radxa/fip.git "$SCRIPT_DIR/.src/fip"
-    fi
+    mkdir -p "$SRC_DIR"
 
-    if ! [[ -e "$SCRIPT_DIR/.src/rkbin" ]]
+    if ! [[ -e "$UBOOT_DIR" ]]
     then
-        git clone --depth 1 https://github.com/radxa/rkbin.git "$SCRIPT_DIR/.src/rkbin"
-    fi
-
-    if ! [[ -e "$SCRIPT_DIR/.src/atf" ]]
-    then
-        git clone --depth 1 --branch $ATF_TAG https://github.com/ARM-software/arm-trusted-firmware.git "$SCRIPT_DIR/.src/atf"
-    fi
-
-    if ! [[ -e "$SCRIPT_DIR/.src/u-boot" ]]
-    then
-        mkdir -p "$SCRIPT_DIR/.src/u-boot"
-        pushd "$SCRIPT_DIR/.src/u-boot"
+        mkdir -p "$UBOOT_DIR"
+        pushd "$UBOOT_DIR"
             git init
         popd
     fi
 
-    pushd "$SCRIPT_DIR/.src/u-boot"
+    pushd "$UBOOT_DIR"
 
         local ORIGIN=$(sha1sum <(echo "$UBOOT_GIT") | cut -d' ' -f1)
         git remote add $ORIGIN $UBOOT_GIT 2>/dev/null && true
@@ -172,28 +178,44 @@ prepare_source() {
             # As such check $UBOOT_BRANCH first.
             git fetch --depth 1 $ORIGIN $UBOOT_BRANCH
             git checkout $UBOOT_BRANCH
-            git reset --hard $ORIGIN/$UBOOT_BRANCH
         elif [[ -n $UBOOT_TAG ]]
         then
             git fetch --depth 1 $ORIGIN tag $UBOOT_TAG
             git checkout tags/$UBOOT_TAG
         fi
 
-        if ls $SCRIPT_DIR/boards/$BOARD/*.patch &>/dev/null
+        git reset --hard FETCH_HEAD
+        git clean -ffd
+        git config --get user.name >/dev/null || git config user.name "ubuild"
+        git config --get user.email >/dev/null || git config user.email "ubuild@invalid.email"
+
+        for f in $(find -L $BOARD_DIR/*.sh -type f)
+        do
+            if [[ $(type -t custom_source_action) == function ]]
+            then
+                unset -f custom_source_action
+            fi
+
+            source $f
+
+            if [[ $(type -t custom_source_action) == function ]]
+            then
+                custom_source_action
+            fi
+        done
+
+        if ls $BOARD_DIR/*.patch &>/dev/null
         then
-            git reset FETCH_HEAD
-            git restore .
-            git config --get user.name >/dev/null || git config user.name "ubuild"
-            git config --get user.email >/dev/null || git config user.email "ubuild@invalid.email"
-            git am --reject --whitespace=fix $(ls $SCRIPT_DIR/boards/$BOARD/*.patch)
+            git am --reject --whitespace=fix $(ls $BOARD_DIR/*.patch)
         fi
 
         # Get U-Boot version
         source <(cat Makefile | head -n 10 | tr -d ' ')
-        UBOOT_VERSION=$VERSION
-        if [[ -n $PATCHLEVEL ]]; then UBOOT_VERSION=$UBOOT_VERSION.$PATCHLEVEL; fi
-        if [[ -n $SUBLEVEL ]]; then UBOOT_VERSION=$UBOOT_VERSION.$SUBLEVEL; fi
-        if [[ -n $EXTRAVERSION ]]; then UBOOT_VERSION=$UBOOT_VERSION.$EXTRAVERSION; fi
+        UBOOT_VERSION="$VERSION"
+        if [[ -n $PATCHLEVEL ]]; then UBOOT_VERSION+=".$PATCHLEVEL"; fi
+        if [[ -n $SUBLEVEL ]]; then UBOOT_VERSION+=".$SUBLEVEL"; fi
+        if [[ -n $EXTRAVERSION ]]; then UBOOT_VERSION+=".$EXTRAVERSION"; fi
+        UBOOT_VERSION+="-$BOARD"
     popd
 }
 
@@ -263,8 +285,8 @@ build() {
         rockchip)
             if [[ $UBOOT_GIT == $MAINLINE_UBOOT ]]
             then
-                make -C "$SCRIPT_DIR/.src/atf" -j$(nproc) CROSS_COMPILE=$CROSS_COMPILE PLAT=$SOC_OVERRIDE
-                local UBOOT_OPT="BL31=$SCRIPT_DIR/.src/atf/build/$SOC_OVERRIDE/release/bl31/bl31.elf"
+                make -C "$SCRIPT_DIR/.src/arm-trusted-firmware" -j$(nproc) CROSS_COMPILE=$CROSS_COMPILE PLAT=$SOC_OVERRIDE
+                local UBOOT_OPT="BL31=$SCRIPT_DIR/.src/arm-trusted-firmware/build/$SOC_OVERRIDE/release/bl31/bl31.elf"
             else
                 local BL31=$(find $SCRIPT_DIR/.src/rkbin/bin | grep ${SOC_OVERRIDE}_bl31_v)
                 if [[ -z $BL31 ]]
