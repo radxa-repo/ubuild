@@ -209,13 +209,6 @@ prepare_source() {
             git am --reject --whitespace=fix $(ls $BOARD_DIR/*.patch)
         fi
 
-        # Get U-Boot version
-        source <(cat Makefile | head -n 10 | tr -d ' ')
-        UBOOT_VERSION="$VERSION"
-        if [[ -n $PATCHLEVEL ]]; then UBOOT_VERSION+=".$PATCHLEVEL"; fi
-        if [[ -n $SUBLEVEL ]]; then UBOOT_VERSION+=".$SUBLEVEL"; fi
-        if [[ -n $EXTRAVERSION ]]; then UBOOT_VERSION+=".$EXTRAVERSION"; fi
-        UBOOT_VERSION+="-$BOARD"
     popd
 }
 
@@ -280,6 +273,14 @@ build() {
     fi
 
     [[ $NO_PREPARE_SOURCE != "y" ]] && prepare_source
+
+    # Get U-Boot version
+    source <(cat $SCRIPT_DIR/.src/u-boot/Makefile | head -n 10 | tr -d ' ')
+    UBOOT_VERSION="$VERSION"
+    if [[ -n $PATCHLEVEL ]]; then UBOOT_VERSION+=".$PATCHLEVEL"; fi
+    if [[ -n $SUBLEVEL ]]; then UBOOT_VERSION+=".$SUBLEVEL"; fi
+    if [[ -n $EXTRAVERSION ]]; then UBOOT_VERSION+=".$EXTRAVERSION"; fi
+    UBOOT_VERSION+="-$BOARD"
 
     case "$SOC_FAMILY" in
         rockchip)
