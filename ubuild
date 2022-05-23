@@ -152,16 +152,14 @@ prepare_source() {
     local BOARD_DIR="$SCRIPT_DIR/boards/$BOARD"
 
     mkdir -p "$SRC_DIR"
-
-    if ! [[ -e "$UBOOT_DIR" ]]
-    then
-        mkdir -p "$UBOOT_DIR"
-        pushd "$UBOOT_DIR"
-            git init
-        popd
-    fi
+    mkdir -p "$UBOOT_DIR"
 
     pushd "$UBOOT_DIR"
+
+        git init
+        [[ -z $(git config --get user.name) ]] && git config user.name "lbuild"
+        [[ -z $(git config --get user.email) ]] && git config user.email "lbuild@invalid.email"
+        git am --abort && true
 
         local ORIGIN=$(sha1sum <(echo "$UBOOT_GIT") | cut -d' ' -f1)
         git remote add $ORIGIN $UBOOT_GIT 2>/dev/null && true
@@ -186,8 +184,6 @@ prepare_source() {
 
         git reset --hard FETCH_HEAD
         git clean -ffd
-        git config --get user.name >/dev/null || git config user.name "ubuild"
-        git config --get user.email >/dev/null || git config user.email "ubuild@invalid.email"
 
         for f in $(find -L $BOARD_DIR/*.sh -type f)
         do
