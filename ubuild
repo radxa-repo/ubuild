@@ -243,12 +243,13 @@ build() {
         usage 0
     fi
 
+    BOARD=$1
+
     if ! source "$SCRIPT_DIR/boards/$1/board.conf" 2>/dev/null
     then
         error $EXIT_UNKNOWN_OPTION "$1"
     fi
 
-    local BOARD=$1
     local SOC_FAMILY=$(get_soc_family $SOC)
 
     if [[ -z $UBOOT_DEFCONFIG ]]
