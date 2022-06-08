@@ -341,6 +341,7 @@ build() {
     local URL="https://github.com/radxa-pkg/$NAME"
     local DESCRIPTION="Radxa U-Boot image for $BOARD"
     fpm -s dir -t deb -n "$NAME" -v "$VERSION" \
+        --deb-compression xz \
         -a arm64 \
         --depends dthelper \
         --deb-priority optional --category admin \
