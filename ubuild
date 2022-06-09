@@ -316,21 +316,21 @@ build() {
             cp "$SCRIPT_DIR/.src/fip/$BOARD/u-boot.bin" "$SCRIPT_DIR/.src/fip/$BOARD/u-boot.bin.sd.bin" "$SCRIPT_DIR/.root/usr/lib/u-boot-$BOARD/"
             ;;
         rockchip)
-            $SCRIPT_DIR/.src/u-boot/tools/mkimage -n $SOC_OVERRIDE -T rkspi -d "$SCRIPT_DIR/.src/u-boot/tpl/u-boot-tpl.bin:$SCRIPT_DIR/.src/u-boot/spl/u-boot-spl.bin" "$SCRIPT_DIR/.src/u-boot/idbloader-tpl.img"
-
             if [[ -n $RKBIN ]]
             then
-                local FLASH_DATA=$(find $SCRIPT_DIR/.src/rkbin/bin | grep ${RKBIN} | sort | tail -n 1)
+                local FLASH_DATA="$(find $SCRIPT_DIR/.src/rkbin/bin | grep ${RKBIN} | sort | tail -n 1):"
                 if [[ -z $FLASH_DATA ]]
                 then
                     error $EXIT_UNKNOWN_OPTION "$RKBIN"
                 else
-                    echo "Using Rockchip miniloader $FLASH_DATA"
-                    $SCRIPT_DIR/.src/u-boot/tools/mkimage -n $SOC_OVERRIDE -T rksd -d "$FLASH_DATA:$SCRIPT_DIR/.src/u-boot/spl/u-boot-spl.bin" "$SCRIPT_DIR/.src/u-boot/idbloader.img"
+                    echo "Using Rockchip miniloader $(basename $FLASH_DATA)"
                 fi
+            else
+                local FLASH_DATA=
             fi
-
-            cp "$SCRIPT_DIR/.src/u-boot/u-boot.itb" "$SCRIPT_DIR/.src/u-boot/idbloader-tpl.img" "$SCRIPT_DIR/.src/u-boot/idbloader.img" "$SCRIPT_DIR/.root/usr/lib/u-boot-$BOARD/"
+            $SCRIPT_DIR/.src/u-boot/tools/mkimage -n $SOC_OVERRIDE -T rksd -d "${FLASH_DATA}${SCRIPT_DIR}/.src/u-boot/spl/u-boot-spl.bin" "$SCRIPT_DIR/.src/u-boot/idbloader.img"
+            $SCRIPT_DIR/.src/u-boot/tools/mkimage -n $SOC_OVERRIDE -T rkspi -d "${FLASH_DATA}${SCRIPT_DIR}/.src/u-boot/spl/u-boot-spl.bin" "$SCRIPT_DIR/.src/u-boot/idbloader-spi.img"
+            cp "$SCRIPT_DIR/.src/u-boot/u-boot.itb" "$SCRIPT_DIR/.src/u-boot/idbloader-spi.img" "$SCRIPT_DIR/.src/u-boot/idbloader.img" "$SCRIPT_DIR/.root/usr/lib/u-boot-$BOARD/"
             ;;
         *)
             error $EXIT_UNSUPPORTED_OPTION "$SOC_FAMILY"
