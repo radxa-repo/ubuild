@@ -1,7 +1,7 @@
-From 0cb70e5ed41be318ca976785883f5bb67900acae Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Yuntian Zhang <yt@radxa.com>
 Date: Tue, 26 Apr 2022 14:23:52 +0800
-Subject: [PATCH 2/3] rockchip: create rk3588s-u-boot-dtsi
+Subject: [PATCH] rockchip: create rk3588s-u-boot-dtsi
 
 This file will contain common features between rk3588 & rk3588s.
 
@@ -542,5 +542,5 @@ index 0000000000..f606faa95e
 +	u-boot,dm-spl;
 +};
 -- 
-2.35.1
+2.36.1
 

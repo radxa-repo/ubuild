@@ -1,7 +1,7 @@
-From 9d8b7974d563683553bf3277f76657e5f54dd3ea Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Christian Hewitt <christianshewitt@gmail.com>
 Date: Sat, 15 Jan 2022 06:35:47 +0000
-Subject: [PATCH 3/3] WIP: doc: boards: amlogic: update for Radxa Zero2
+Subject: [PATCH] WIP: doc: boards: amlogic: update for Radxa Zero2
 
 Add documentation bits for the Radxa Zero2
 

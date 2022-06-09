@@ -1,7 +1,7 @@
-From cd5ad83135367bdf054d1f79f8e15fcbcd2ecea3 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Yuntian Zhang <yt@radxa.com>
 Date: Tue, 26 Apr 2022 14:24:30 +0800
-Subject: [PATCH 3/3] rockchip: add ROCK 5A support
+Subject: [PATCH] rockchip: add ROCK 5A support
 
 Signed-off-by: Yuntian Zhang <yt@radxa.com>
 ---
@@ -268,5 +268,5 @@ index 0000000000..51ed3efabb
 +CONFIG_OPTEE_V2=y
 +CONFIG_OPTEE_ALWAYS_USE_SECURITY_PARTITION=y
 -- 
-2.35.1
+2.36.1
 

@@ -1,7 +1,7 @@
-From 2200a94ab134393483c0f154a2c98c25d3e41a08 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Christian Hewitt <christianshewitt@gmail.com>
 Date: Sat, 15 Jan 2022 06:23:29 +0000
-Subject: [PATCH 2/3] WIP: boards: amlogic: add Radxa Zero2 defconfig
+Subject: [PATCH] WIP: boards: amlogic: add Radxa Zero2 defconfig
 
 Add a defconfig for the Radxa Zero2 SBC, using an Amlogic A311D chip.
 
