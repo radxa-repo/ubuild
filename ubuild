@@ -320,11 +320,12 @@ build() {
 
             if [[ -n $RKBIN ]]
             then
-                local FLASH_DATA=$(find $SCRIPT_DIR/.src/rkbin/bin | grep ${RKBIN})
+                local FLASH_DATA=$(find $SCRIPT_DIR/.src/rkbin/bin | grep ${RKBIN} | sort | tail -n 1)
                 if [[ -z $FLASH_DATA ]]
                 then
-                    echo "Unable to find rockchip memory data. You may not have a valid first stage loader." >&2
+                    error $EXIT_UNKNOWN_OPTION "$RKBIN"
                 else
+                    echo "Using Rockchip miniloader $FLASH_DATA"
                     $SCRIPT_DIR/.src/u-boot/tools/mkimage -n $SOC_OVERRIDE -T rksd -d "$FLASH_DATA:$SCRIPT_DIR/.src/u-boot/spl/u-boot-spl.bin" "$SCRIPT_DIR/.src/u-boot/idbloader.img"
                 fi
             fi
