@@ -277,7 +277,6 @@ build() {
     if [[ -n $PATCHLEVEL ]]; then UBOOT_VERSION+=".$PATCHLEVEL"; fi
     if [[ -n $SUBLEVEL ]]; then UBOOT_VERSION+=".$SUBLEVEL"; fi
     if [[ -n $EXTRAVERSION ]]; then UBOOT_VERSION+=".$EXTRAVERSION"; fi
-    UBOOT_VERSION+="-$BOARD"
 
     case "$SOC_FAMILY" in
         rockchip)
