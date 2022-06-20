@@ -310,6 +310,7 @@ build() {
 
     case "$SOC_FAMILY" in
         amlogic)
+            make -C "$SCRIPT_DIR/.src/fip" -j$(nproc) distclean
             make -C "$SCRIPT_DIR/.src/fip" -j$(nproc) fip BOARD=$BOARD UBOOT_BIN="$SCRIPT_DIR/.src/u-boot/u-boot.bin"
 
             cp "$SCRIPT_DIR/.src/fip/$BOARD/u-boot.bin" "$SCRIPT_DIR/.src/fip/$BOARD/u-boot.bin.sd.bin" "$SCRIPT_DIR/.root/usr/lib/u-boot-$BOARD/"
@@ -356,8 +357,6 @@ build() {
         --template-scripts --after-install "$SCRIPT_DIR/deb/postinst.sh" \
         --force \
         "$SCRIPT_DIR/.root/"=/
-
-    rm -rf "$SCRIPT_DIR/.root"
 }
 
 set -e
