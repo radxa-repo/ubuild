@@ -208,6 +208,40 @@ prepare_source() {
     popd
 }
 
+kconfig() {
+    while IFS="" read -r k || [ -n "$k" ]
+    do
+        if echo "$k" | grep "^# CONFIG_.* is not set$"
+        then
+            local CONFIG=$(echo $k | cut -d ' ' -f 2)
+            local SWITCH="--undefine"
+        elif echo "$k" | grep "^CONFIG_.*=[ynm]$"
+        then
+            local CONFIG=$(echo $k | cut -d '=' -f 1)
+            case "$(echo $k | cut -d'=' -f 2)" in
+                y)
+                    local SWITCH="--enable"
+                    ;;
+                n)
+                    local SWITCH="--disable"
+                    ;;
+                m)
+                    local SWITCH="--module"
+                    ;;
+            esac
+        elif echo "$k" | grep "^#"
+        then
+            continue
+        elif [[ -z "$k" ]]
+        then
+            continue
+        else
+            error $EXIT_UNKNOWN_OPTION "$k"
+        fi
+        "$SCRIPT_DIR/common/config" --file "$SCRIPT_DIR/.src/u-boot/.config" $SWITCH $CONFIG
+    done < "$1"
+}
+
 build() {
     if (( $# == 0 ))
     then
@@ -302,7 +336,14 @@ build() {
             ;;
     esac
 
-    make -C "$SCRIPT_DIR/.src/u-boot" -j$(nproc) ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE $UBOOT_DEFCONFIG $UBOOT_OPT all
+    make -C "$SCRIPT_DIR/.src/u-boot" -j$(nproc) ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE $UBOOT_DEFCONFIG
+    
+    if [[ -e "$SCRIPT_DIR/boards/$BOARD/kconfig.conf" ]]
+    then
+        kconfig "$SCRIPT_DIR/boards/$BOARD/kconfig.conf"
+    fi
+
+    make -C "$SCRIPT_DIR/.src/u-boot" -j$(nproc) ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE olddefconfig $UBOOT_OPT all
 
     rm -rf "$SCRIPT_DIR/.root"
     mkdir -p "$SCRIPT_DIR/.root/usr/lib/u-boot-$BOARD"
