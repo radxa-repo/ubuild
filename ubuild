@@ -196,7 +196,7 @@ prepare_source() {
 
             if [[ $(type -t custom_source_action) == function ]]
             then
-                custom_source_action
+                custom_source_action "$SCRIPT_DIR" "$UBOOT_DIR"
             fi
         done
 
