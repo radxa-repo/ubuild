@@ -49,13 +49,13 @@ update_spi() {
         exit 1
     fi
 
-    case "$(dtsoc)" in
+    local SOC=${1:-$(dtsoc)}
+
+    case "$SOC" in
         rockchip*)
-            dd if=/dev/zero of=/dev/mtdblock0 || true
             cp "$SCRIPT_DIR/idbloader-spi.img" /tmp/spi.img
             dd if="$SCRIPT_DIR/u-boot.itb" of=/tmp/spi.img bs=512 seek=768
-            #dd if=/dev/zero of=/tmp/spi.img bs=1 count=0 seek=4M
-            dd if=/tmp/spi.img of=/dev/mtdblock0
+            dd if=/tmp/spi.img of=/dev/mtdblock0 bs=4096
             rm /tmp/spi.img
             ;;
         *)
