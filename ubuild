@@ -200,10 +200,13 @@ prepare_source() {
             fi
         done
 
-        if ls $BOARD_DIR/*.patch &>/dev/null
-        then
-            git am --reject --whitespace=fix $(ls $BOARD_DIR/*.patch)
-        fi
+        for d in $(find -L $BOARD_DIR -type d | sort)
+        do
+            if ls $d/*.patch &>/dev/null
+            then
+                git am --reject --whitespace=fix $(ls $d/*.patch)
+            fi
+        done
 
     popd
 }
