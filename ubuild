@@ -323,27 +323,25 @@ build() {
     if [[ -n $SUBLEVEL ]]; then UBOOT_VERSION+=".$SUBLEVEL"; fi
     if [[ -n $EXTRAVERSION ]]; then UBOOT_VERSION+=".$EXTRAVERSION"; fi
 
+    local UBOOT_OPT=
     case "$SOC_FAMILY" in
         rockchip)
             if [[ $UBOOT_GIT == $MAINLINE_UBOOT ]]
             then
                 make -C "$SCRIPT_DIR/.src/arm-trusted-firmware" -j$(nproc) CROSS_COMPILE=$CROSS_COMPILE PLAT=$SOC_OVERRIDE
-                local UBOOT_OPT="BL31=$SCRIPT_DIR/.src/arm-trusted-firmware/build/$SOC_OVERRIDE/release/bl31/bl31.elf"
+                UBOOT_OPT="BL31=$SCRIPT_DIR/.src/arm-trusted-firmware/build/$SOC_OVERRIDE/release/bl31/bl31.elf"
             else
-                local BL31=$(find $SCRIPT_DIR/.src/rkbin/bin | grep ${SOC_OVERRIDE}_bl31_v)
+                local BL31=$(find $SCRIPT_DIR/.src/rkbin/bin | grep ${SOC_OVERRIDE}_bl31_v | sort | tail -n 1)
                 if [[ -z $BL31 ]]
                 then
                     echo "Unable to find prebuilt bl31. The resulting bootloader may not work!" >&2
-                    local UBOOT_OPT=
                 else
-                    local UBOOT_OPT="BL31=$BL31"
+                    echo "Using bl31 $(basename $BL31)"
+                    UBOOT_OPT="BL31=$BL31"
                 fi
             fi
 
             UBOOT_OPT="$UBOOT_OPT u-boot.dtb u-boot.itb"
-            ;;
-        *)
-            local UBOOT_OPT=
             ;;
     esac
 
