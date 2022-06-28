@@ -214,24 +214,32 @@ prepare_source() {
 kconfig() {
     while IFS="" read -r k || [ -n "$k" ]
     do
+        local CONFIG=
+        local OPTION=
+        local SWITCH=
         if echo "$k" | grep "^# CONFIG_.* is not set$"
         then
-            local CONFIG=$(echo $k | cut -d ' ' -f 2)
-            local SWITCH="--undefine"
+            CONFIG=$(echo $k | cut -d ' ' -f 2)
+            SWITCH="--undefine"
         elif echo "$k" | grep "^CONFIG_.*=[ynm]$"
         then
-            local CONFIG=$(echo $k | cut -d '=' -f 1)
+            CONFIG=$(echo $k | cut -d '=' -f 1)
             case "$(echo $k | cut -d'=' -f 2)" in
                 y)
-                    local SWITCH="--enable"
+                    SWITCH="--enable"
                     ;;
                 n)
-                    local SWITCH="--disable"
+                    SWITCH="--disable"
                     ;;
                 m)
-                    local SWITCH="--module"
+                    SWITCH="--module"
                     ;;
             esac
+        elif echo "$k" | grep "^CONFIG_.*=\".*\"$"
+        then
+            CONFIG="$(echo $k | cut -d '=' -f 1)"
+            OPTION="$(echo $k | cut -d '=' -f 2)"
+            SWITCH="--set-val"
         elif echo "$k" | grep "^#"
         then
             continue
@@ -241,7 +249,7 @@ kconfig() {
         else
             error $EXIT_UNKNOWN_OPTION "$k"
         fi
-        "$SCRIPT_DIR/common/config" --file "$SCRIPT_DIR/.src/u-boot/.config" $SWITCH $CONFIG
+        "$SCRIPT_DIR/common/config" --file "$SCRIPT_DIR/.src/u-boot/.config" $SWITCH $CONFIG "$OPTION"
     done < "$1"
 }
 
