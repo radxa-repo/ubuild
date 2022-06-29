@@ -226,11 +226,11 @@ kconfig() {
         local CONFIG=
         local OPTION=
         local SWITCH=
-        if echo "$k" | grep -q "^# CONFIG_.* is not set$"
+        if grep -q "^# CONFIG_.* is not set$" <<< $k
         then
-            CONFIG=$(echo $k | cut -d ' ' -f 2)
+            CONFIG=$(cut -d ' ' -f 2 <<< $k)
             SWITCH="--undefine"
-        elif echo "$k" | grep -q "^CONFIG_.*=[ynm]$"
+        elif grep -q "^CONFIG_.*=[ynm]$" <<< $k
         then
             CONFIG=$(echo $k | cut -d '=' -f 1)
             case "$(echo $k | cut -d'=' -f 2)" in
@@ -244,17 +244,15 @@ kconfig() {
                     SWITCH="--module"
                     ;;
             esac
-        elif echo "$k" | grep -q "^CONFIG_.*=\".*\"$"
+        elif grep -q "^CONFIG_.*=\".*\"$" <<< $k
         then
-            CONFIG="$(echo $k | cut -d '=' -f 1)"
-            OPTION="$(echo $k | cut -d '=' -f 2)"
+            IFS='=' read -r CONFIG OPTION <<< $k
             SWITCH="--set-val"
-        elif echo "$k" | grep -q "^CONFIG_.*=.*$"
+        elif grep -q "^CONFIG_.*=.*$" <<< $k
         then
-            CONFIG="$(echo $k | cut -d '=' -f 1)"
-            OPTION="$(echo $k | cut -d '=' -f 2)"
+            IFS='=' read -r CONFIG OPTION <<< $k
             SWITCH="--set-val"
-        elif echo "$k" | grep -q "^#"
+        elif grep -q "^#" <<< $k
         then
             continue
         elif [[ -z "$k" ]]
