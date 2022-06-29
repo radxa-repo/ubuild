@@ -363,7 +363,7 @@ build() {
 
     rm -rf "$SCRIPT_DIR/.root"
     mkdir -p "$SCRIPT_DIR/.root/usr/lib/u-boot-$BOARD"
-    cp "$SCRIPT_DIR/common/boot.cmd" "$SCRIPT_DIR/common/setup.sh" "$SCRIPT_DIR/.root/usr/lib/u-boot-$BOARD/"
+    cp "$SCRIPT_DIR/common/setup.sh" "$SCRIPT_DIR/.root/usr/lib/u-boot-$BOARD/"
 
     case "$SOC_FAMILY" in
         amlogic)
@@ -411,7 +411,6 @@ build() {
         --license "GPL-2+" \
         -m "Radxa <dev@radxa.com>" \
         --vendor "Radxa" \
-        --template-scripts --after-install "$SCRIPT_DIR/deb/postinst.sh" \
         --force \
         "$SCRIPT_DIR/.root/"=/
 }

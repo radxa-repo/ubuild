@@ -1,27 +1,5 @@
 #!/bin/bash
 
-postinst() {
-    if [[ ! -e /boot/uEnv.txt ]]
-    then
-        cp "$SCRIPT_DIR/uEnv.txt" /boot
-    fi
-    
-    if [[ ! -e /boot/boot.cmd ]]
-    then
-        update_bootcmd
-    fi
-
-    if [[ ! -e /boot/boot.scr ]]
-    then
-        mkimage -C none -A arm -T script -d /boot/boot.cmd /boot/boot.scr
-    fi
-}
-
-update_bootcmd() {
-    cp "$SCRIPT_DIR/boot.cmd" /boot
-    mkimage -C none -A arm -T script -d /boot/boot.cmd /boot/boot.scr
-}
-
 update_bootloader() {
     local DEVICE=$1
     local SOC=${2:-$(dtsoc)}
