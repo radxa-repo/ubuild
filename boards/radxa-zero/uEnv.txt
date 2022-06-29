@@ -1,1 +1,0 @@
-overlays=meson-g12a-uart-ao-a-on-gpioao-0-gpioao-1

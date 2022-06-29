@@ -374,7 +374,7 @@ build() {
 
     rm -rf "$SCRIPT_DIR/.root"
     mkdir -p "$SCRIPT_DIR/.root/usr/lib/u-boot-$BOARD"
-    cp "$SCRIPT_DIR/common/boot.cmd" "$SCRIPT_DIR/common/setup.sh" "$SCRIPT_DIR/boards/$BOARD/uEnv.txt" "$SCRIPT_DIR/.root/usr/lib/u-boot-$BOARD/"
+    cp "$SCRIPT_DIR/common/boot.cmd" "$SCRIPT_DIR/common/setup.sh" "$SCRIPT_DIR/.root/usr/lib/u-boot-$BOARD/"
 
     case "$SOC_FAMILY" in
         amlogic)
