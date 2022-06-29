@@ -188,22 +188,28 @@ prepare_source() {
         git reset --hard FETCH_HEAD
         git clean -ffd
 
-        for f in $(find -L $BOARD_DIR/*.sh -type f)
+        for d in $(find -L $BOARD_DIR -type d | sort -r)
         do
-            if [[ $(type -t custom_source_action) == function ]]
-            then
-                unset -f custom_source_action
-            fi
+            shopt -s nullglob
+            for f in $d/*.sh
+            do
+                if [[ $(type -t custom_source_action) == function ]]
+                then
+                    unset -f custom_source_action
+                fi
 
-            source $f
+                source $f
 
-            if [[ $(type -t custom_source_action) == function ]]
-            then
-                custom_source_action "$SCRIPT_DIR" "$UBOOT_DIR"
-            fi
+                if [[ $(type -t custom_source_action) == function ]]
+                then
+                    echo "Running custom_source_action from $f"
+                    custom_source_action "$SCRIPT_DIR" "$UBOOT_DIR"
+                fi
+            done
+            shopt -u nullglob
         done
 
-        for d in $(find -L $BOARD_DIR -type d | sort)
+        for d in $(find -L $BOARD_DIR -type d | sort -r)
         do
             if ls $d/*.patch &>/dev/null
             then
@@ -355,10 +361,14 @@ build() {
 
     make -C "$SCRIPT_DIR/.src/u-boot" -j$(nproc) ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE $UBOOT_DEFCONFIG
     
-    if [[ -e "$SCRIPT_DIR/boards/$BOARD/kconfig.conf" ]]
-    then
-        kconfig "$SCRIPT_DIR/boards/$BOARD/kconfig.conf"
-    fi
+    for d in $(find -L "$SCRIPT_DIR/boards/$BOARD" -type d | sort -r)
+    do
+        if [[ -e "$d/kconfig.conf" ]]
+        then
+            echo "Apply kconfig from $d/kconfig.conf"
+            kconfig "$d/kconfig.conf"
+        fi
+    done
 
     make -C "$SCRIPT_DIR/.src/u-boot" -j$(nproc) ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE olddefconfig $UBOOT_OPT all
 
