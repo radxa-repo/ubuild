@@ -243,6 +243,11 @@ kconfig() {
             CONFIG="$(echo $k | cut -d '=' -f 1)"
             OPTION="$(echo $k | cut -d '=' -f 2)"
             SWITCH="--set-val"
+        elif echo "$k" | grep "^CONFIG_.*=.*$"
+        then
+            CONFIG="$(echo $k | cut -d '=' -f 1)"
+            OPTION="$(echo $k | cut -d '=' -f 2)"
+            SWITCH="--set-val"
         elif echo "$k" | grep "^#"
         then
             continue
