@@ -164,8 +164,8 @@ prepare_source() {
         local ORIGIN=$(sha1sum <(echo "$UBOOT_GIT") | cut -d' ' -f1)
         git remote add $ORIGIN $UBOOT_GIT 2>/dev/null && true
 
-        git reset --hard FETCH_HEAD
-        git clean -ffd
+        git reset --hard FETCH_HEAD || true
+        git clean -ffd || true
 
         if [[ -n $UBOOT_COMMIT ]]
         then
