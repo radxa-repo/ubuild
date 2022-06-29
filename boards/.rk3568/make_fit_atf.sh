@@ -1,1 +1,0 @@
-../.rockchip/make_fit_atf.sh
