@@ -328,13 +328,6 @@ build() {
 
     [[ $NO_PREPARE_SOURCE != "y" ]] && prepare_source
 
-    # Get U-Boot version
-    source <(cat $SCRIPT_DIR/.src/u-boot/Makefile | head -n 10 | tr -d ' ')
-    UBOOT_VERSION="$VERSION"
-    if [[ -n $PATCHLEVEL ]]; then UBOOT_VERSION+=".$PATCHLEVEL"; fi
-    if [[ -n $SUBLEVEL ]]; then UBOOT_VERSION+=".$SUBLEVEL"; fi
-    if [[ -n $EXTRAVERSION ]]; then UBOOT_VERSION+=".$EXTRAVERSION"; fi
-
     local UBOOT_OPT=
     case "$SOC_FAMILY" in
         rockchip)
@@ -404,7 +397,7 @@ build() {
     esac
 
     local NAME="u-boot-$BOARD"
-    local VERSION="$UBOOT_VERSION-$PKG_REVISION"
+    local VERSION="$(make -C "$SCRIPT_DIR/.src/u-boot" -s ubootversion)-$PKG_REVISION"
     local URL="https://github.com/radxa-pkg/$NAME"
     local DESCRIPTION="Radxa U-Boot image for $BOARD"
     fpm -s dir -t deb -n "$NAME" -v "$VERSION" \
