@@ -160,12 +160,10 @@ prepare_source() {
         [[ -z $(git config --get user.name) ]] && git config user.name "lbuild"
         [[ -z $(git config --get user.email) ]] && git config user.email "lbuild@invalid.email"
         git am --abort && true
+        [[ -n $(git status -s) ]] && git reset --hard HEAD
 
         local ORIGIN=$(sha1sum <(echo "$UBOOT_GIT") | cut -d' ' -f1)
         git remote add $ORIGIN $UBOOT_GIT 2>/dev/null && true
-
-        git reset --hard FETCH_HEAD || true
-        git clean -ffd || true
 
         if [[ -n $UBOOT_COMMIT ]]
         then
