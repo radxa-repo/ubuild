@@ -15,7 +15,7 @@ update_bootloader() {
             ;;
         *)
             echo Unknown SOC. >&2
-            exit 1
+            return 1
             ;;
     esac
 }
@@ -24,7 +24,7 @@ update_spi() {
     if [[ ! -e /dev/mtdblock0 ]]
     then
         echo "/dev/mtdblock0 is missing." >&2
-        exit 1
+        return 1
     fi
 
     local SOC=${1:-$(dtsoc)}
@@ -38,14 +38,23 @@ update_spi() {
             ;;
         *)
             echo Unknown SOC. >&2
-            exit 1
+            return 1
             ;;
     esac
 
 }
 
+set -e
+
 SCRIPT_DIR="$(dirname "$(realpath "$0")")"
 
 ACTION="$1"
 shift
-$ACTION "$@"
+
+if [[ $(type -t $ACTION) == function ]]
+then
+    $ACTION "$@"
+else
+    echo "Unsupported action: '$ACTION'" >&2
+    return 1
+fi
