@@ -6,12 +6,12 @@ update_bootloader() {
 
     case "$SOC" in
         amlogic*)
-            dd if="$SCRIPT_DIR/u-boot.bin.sd.bin" of=$DEVICE bs=1 count=444
-            dd if="$SCRIPT_DIR/u-boot.bin.sd.bin" of=$DEVICE bs=512 skip=1 seek=1
+            dd conv=notrunc if="$SCRIPT_DIR/u-boot.bin.sd.bin" of=$DEVICE bs=1 count=444
+            dd conv=notrunc if="$SCRIPT_DIR/u-boot.bin.sd.bin" of=$DEVICE bs=512 skip=1 seek=1
             ;;
         rockchip*)
-            dd if="$SCRIPT_DIR/idbloader.img" of=$DEVICE bs=512 seek=64
-            dd if="$SCRIPT_DIR/u-boot.itb" of=$DEVICE bs=512 seek=16384
+            dd conv=notrunc if="$SCRIPT_DIR/idbloader.img" of=$DEVICE bs=512 seek=64
+            dd conv=notrunc if="$SCRIPT_DIR/u-boot.itb" of=$DEVICE bs=512 seek=16384
             ;;
         *)
             echo Unknown SOC. >&2
@@ -32,8 +32,8 @@ update_spi() {
     case "$SOC" in
         rockchip*)
             cp "$SCRIPT_DIR/idbloader-spi.img" /tmp/spi.img
-            dd if="$SCRIPT_DIR/u-boot.itb" of=/tmp/spi.img bs=512 seek=768
-            dd if=/tmp/spi.img of=/dev/mtdblock0 bs=4096
+            dd conv=notrunc if="$SCRIPT_DIR/u-boot.itb" of=/tmp/spi.img bs=512 seek=768
+            dd conv=notrunc if=/tmp/spi.img of=/dev/mtdblock0 bs=4096
             rm /tmp/spi.img
             ;;
         *)
