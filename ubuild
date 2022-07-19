@@ -17,10 +17,10 @@ get_soc_family() {
 ARCH="arm"
 CROSS_COMPILE="aarch64-linux-gnu-"
 MAINLINE_UBOOT="https://github.com/u-boot/u-boot.git"
-ATF_TAG="v2.6"
+ATF_TAG="v2.7.0"
 RKBIN=
 UBOOT_GIT="$MAINLINE_UBOOT"
-UBOOT_TAG="v2022.04"
+UBOOT_TAG="v2022.07"
 UBOOT_DEFCONFIG=
 UBOOT_COMMIT=
 UBOOT_BRANCH=
